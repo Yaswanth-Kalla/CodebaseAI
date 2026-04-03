@@ -1,3 +1,4 @@
+print("🔥 Running hybrid search...")
 import numpy as np
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
