@@ -10,7 +10,7 @@ export default function GraphView() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("http://localhost:8000/graph")
+    fetch("https://codebaseai-orv6.onrender.com/graph")
       .then(res => res.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setError(true); setLoading(false); });
