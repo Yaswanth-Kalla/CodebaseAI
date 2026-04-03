@@ -1,10 +1,13 @@
+import re
+
+
 def detect_query_type(query):
     q = query.lower()
 
-    if ".py" in q or ".js" in q or ".html" in q:
+    if re.search(r'\.\w{1,5}\b', q):   # any file extension mention
         return "file"
 
-    if "function" in q or "def " in q:
+    if "function" in q or "def " in q or "method" in q:
         return "function"
 
     return "general"
@@ -14,8 +17,9 @@ def find_target_file(query, files):
     q = query.lower()
 
     for f in files:
-        filename = f.split("\\")[-1].lower()
-        if filename in q:
+        # cross-platform: handle both / and \
+        basename = re.split(r'[\\/]', f)[-1].lower()
+        if basename in q:
             return f
 
     return None

@@ -1,100 +1,86 @@
+"""
+file_loader.py — walks a repo and produces chunks via multi_ast.chunk_file.
+
+All AST / regex / fallback logic has been moved to multi_ast.py so this file
+stays thin and focused on file discovery + orchestration.
+"""
+
 import os
-import ast
+import nbformat
+
+from multi_ast import chunk_file          # ← single unified entry point
 
 
-# -------------------------------
-# Python Chunking (AST Based)
-# -------------------------------
-def chunk_python_file(file_path):
-    with open(file_path, "r", encoding="utf-8") as f:
-        code = f.read()
+# ════════════════════════════════════════════════════════════════════════════
+# FILE DISCOVERY
+# ════════════════════════════════════════════════════════════════════════════
 
-    tree = ast.parse(code)
-    lines = code.splitlines()
-
-    chunks = []
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            start = node.lineno - 1
-            end = node.end_lineno
-
-            func_code = "\n".join(lines[start:end])
-
-            chunks.append({
-                "type": "function",
-                "name": node.name,
-                "file": file_path,
-                "code": func_code
-            })
-
-        elif isinstance(node, ast.ClassDef):
-            start = node.lineno - 1
-            end = node.end_lineno
-
-            class_code = "\n".join(lines[start:end])
-
-            chunks.append({
-                "type": "class",
-                "name": node.name,
-                "file": file_path,
-                "code": class_code
-            })
-
-    return chunks
+SUPPORTED_EXTENSIONS = (
+    ".py", ".js", ".ts", ".jsx", ".tsx",
+    ".java", ".c", ".cpp", ".cc",
+    ".cs", ".go", ".rb", ".rs", ".php",
+    ".html", ".ejs", ".xml",
+    ".css", ".sql",
+    ".ipynb",
+)
 
 
-# -------------------------------
-# Fallback Chunking (Non-Python)
-# -------------------------------
-def chunk_text_file(file_path, chunk_size=300):
-    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-        text = f.read()
-
-    chunks = []
-    words = text.split()
-
-    for i in range(0, len(words), chunk_size):
-        chunk = " ".join(words[i:i + chunk_size])
-
-        chunks.append({
-            "type": "text",
-            "name": "text_chunk",
-            "file": file_path,
-            "code": chunk
-        })
-
-    return chunks
-
-
-# -------------------------------
-# Get All Files
-# -------------------------------
-def get_code_files(repo_path):
+def get_code_files(repo_path: str) -> list:
     code_files = []
-
     for root, _, files in os.walk(repo_path):
         for file in files:
-            if file.endswith((".py", ".js", ".html", ".css",".ipynb")):
+            if file.endswith(SUPPORTED_EXTENSIONS):
                 code_files.append(os.path.join(root, file))
     print(f"Loaded files count: {len(code_files)}")
     return code_files
 
 
-# -------------------------------
-# Main Loader
-# -------------------------------
-def load_codebase(repo_path):
-    files = get_code_files(repo_path)
+# ════════════════════════════════════════════════════════════════════════════
+# NOTEBOOK SUPPORT
+# ════════════════════════════════════════════════════════════════════════════
 
+def _chunk_ipynb(file_path: str) -> list:
+    """Extract code cells from a Jupyter notebook as individual chunks."""
+    try:
+        nb = nbformat.read(file_path, as_version=4)
+    except Exception as e:
+        print(f"Notebook parse error ({file_path}): {e}")
+        return []
+
+    chunks = []
+    for i, cell in enumerate(nb.cells):
+        if cell.cell_type != "code":
+            continue
+        code = "".join(cell.source).strip()
+        if not code:
+            continue
+        chunks.append({
+            "type":       "notebook_cell",
+            "name":       f"cell_{i}",
+            "file":       file_path,
+            "language":   "python",
+            "code":       code[:1200],
+            "start_line": i,
+            "end_line":   i,
+        })
+    return chunks
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# MAIN LOADER
+# ════════════════════════════════════════════════════════════════════════════
+
+def load_codebase(repo_path: str) -> list:
+    files      = get_code_files(repo_path)
     all_chunks = []
 
     for file in files:
-        if file.endswith(".py"):
-            chunks = chunk_python_file(file)
+        if file.endswith(".ipynb"):
+            chunks = _chunk_ipynb(file)
         else:
-            chunks = chunk_text_file(file)
+            chunks = chunk_file(file)          # multi_ast handles everything
 
         all_chunks.extend(chunks)
 
+    print("Total chunks generated:", len(all_chunks))
     return all_chunks
