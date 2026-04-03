@@ -6,7 +6,7 @@ export default function FileViewer({ filePath }) {
   useEffect(() => {
     if (!filePath) return;
 
-    fetch(`http://localhost:8000/file-content?path=${filePath}`)
+    fetch(`https://codebaseai-orv6.onrender.com/file-content?path=${filePath}`)
       .then(res => res.json())
       .then(data => setContent(data.content));
   }, [filePath]);
