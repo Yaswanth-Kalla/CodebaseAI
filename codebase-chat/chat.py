@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 import requests
@@ -9,11 +10,26 @@ import shutil
 import subprocess
 import nbformat
 
-from vector_store import main
-from hybrid_search import hybrid_search, build_bm25
-from file_loader import get_code_files
-from context_expander import expand_context
+print("🔥 CHAT FILE LOADED (SAFE)")
 
+
+# from vector_store import main
+def run_vector_store(repo_path):
+    from vector_store import main
+    return main(repo_path)
+def run_hybrid_search(*args, **kwargs):
+    from hybrid_search import hybrid_search,build_bm25
+    return hybrid_search(*args, **kwargs)
+# from hybrid_search import hybrid_search, build_bm25
+# from file_loader import get_code_files
+# from context_expander import expand_context
+def load_files(repo_path):
+    from file_loader import get_code_files
+    return get_code_files(repo_path)
+
+def expand_ctx(*args):
+    from context_expander import expand_context
+    return expand_context(*args)
 # ── build_code_graph is OPTIONAL ────────────────────────────────────────────
 # It adds symbol_table + call_graph context for Python files.
 # Non-Python heavy repos work perfectly without it.
@@ -90,10 +106,10 @@ def load_repository(repo_path):
 
     print(f"Loading repo: {repo_path}")
 
-    index, chunks, metadata = main(repo_path)
+    index, chunks, metadata = run_vector_store(repo_path)
     bm25 = build_bm25(chunks)
 
-    raw_files = get_code_files(repo_path)
+    raw_files = load_files(repo_path)
     files = []
     file_contents_override = {}
 
@@ -409,13 +425,13 @@ def stream_answer(query):
         return
 
     # -------- RAG SEARCH --------
-    results = hybrid_search(query, index, chunks, metadata, bm25)
+    results = run_hybrid_search(query, index, chunks, metadata, bm25)
 
     if not results or results[0]["score"] < 0.25:
         yield "data:Not enough relevant information.\n\n"
         return
 
-    context_chunks, retrieved_files = expand_context(
+    context_chunks, retrieved_files = expand_ctx(
         results, graph, symbol_table, call_graph
     )
 
