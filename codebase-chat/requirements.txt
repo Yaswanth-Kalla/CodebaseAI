@@ -13,3 +13,4 @@ pydantic
 rank-bm25
 tree-sitter-languages
 nbformat
+python-multipart
