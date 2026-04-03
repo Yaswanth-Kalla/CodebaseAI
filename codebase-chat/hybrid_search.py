@@ -1,8 +1,9 @@
 import numpy as np
 from rank_bm25 import BM25Okapi
 from sentence_transformers import SentenceTransformer
+from model_loader import get_model
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+model = get_model()  # Ensure model is loaded before hybrid search runs
 
 
 def build_bm25(chunks):

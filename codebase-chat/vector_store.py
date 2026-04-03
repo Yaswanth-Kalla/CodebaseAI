@@ -1,20 +1,23 @@
 from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
+from model_loader import get_model
 
 from file_loader import load_codebase
 
 # -------------------------------
 # Load embedding model
 # -------------------------------
-model = SentenceTransformer('all-MiniLM-L6-v2')
+from sentence_transformers import SentenceTransformer
+
+model = get_model()  # Ensure model is loaded before any function runs
 
 
 # -------------------------------
 # Create embeddings
 # -------------------------------
 def create_embeddings(chunks):
-    embeddings = model.encode(chunks, show_progress_bar=False, batch_size=64)
+    embeddings = get_model().encode(chunks, show_progress_bar=False, batch_size=64)
     return np.array(embeddings)
 
 

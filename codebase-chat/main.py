@@ -1,3 +1,4 @@
+print("🔥 MAIN STARTING...")
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,12 @@ from fastapi.responses import StreamingResponse
 from chat import stream_answer
 from chat import router as chat_router
 import chat
+
+print("🔥 IMPORTS DONE")
+
+
 app = FastAPI()
+print("🔥 FASTAPI CREATED")
 
 # -------------------------------
 # CORS
@@ -76,3 +82,10 @@ def get_file_content(path: str):
 # INCLUDE CHAT ROUTES
 # -------------------------------
 app.include_router(chat_router)
+
+import os
+import uvicorn
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
