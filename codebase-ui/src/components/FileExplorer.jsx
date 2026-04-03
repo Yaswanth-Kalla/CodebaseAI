@@ -25,7 +25,7 @@ export default function FileExplorer({ fileToOpen }) {
 
   useEffect(() => {
     setLoadingFiles(true);
-    fetch("http://localhost:8000/files")
+    fetch("https://codebaseai-orv6.onrender.com/files")
       .then(res => res.json())
       .then(data => {
         const paths = [...new Set(data.map(f => f.file))];
@@ -41,7 +41,7 @@ export default function FileExplorer({ fileToOpen }) {
     setContent("");
     setHighlightLine(null);
     try {
-      const res = await fetch(`http://localhost:8000/file-content?path=${encodeURIComponent(file)}`);
+      const res = await fetch(`https://codebaseai-orv6.onrender.com/file-content?path=${encodeURIComponent(file)}`);
       const data = await res.json();
       setContent(data.content || "");
     } catch (err) {
