@@ -1,15 +1,15 @@
-# print("🔥 MAIN STARTING...")
-# from fastapi import FastAPI
-# from pydantic import BaseModel
-# from fastapi.middleware.cors import CORSMiddleware
-# from fastapi.responses import StreamingResponse
+print("🔥 MAIN STARTING...")
+from fastapi import FastAPI
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
-# # 🔥 IMPORTANT: import dynamic state instead
-# from chat import stream_answer
-# from chat import router as chat_router
-# import chat
+# 🔥 IMPORTANT: import dynamic state instead
+from chat import stream_answer
+from chat import router as chat_router
+import chat
 
-# print("🔥 IMPORTS DONE")
+print("🔥 IMPORTS DONE")
 
 
 # app = FastAPI()
