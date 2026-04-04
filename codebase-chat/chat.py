@@ -107,13 +107,33 @@ def load_repository(repo_path):
     print(f"Loading repo: {repo_path}")
 
     index, chunks, metadata = run_vector_store(repo_path)
+    print("Step 1: Vector store built")
+
+# 🚨 LIMIT CHUNKS (prevents memory crash)
+    MAX_CHUNKS = 800
+    chunks = chunks[:MAX_CHUNKS]
+    metadata = metadata[:MAX_CHUNKS]
     bm25 = build_bm25(chunks)
+    print("Step 2: BM25 built")
 
     raw_files = load_files(repo_path)
+
+# 🚨 LIMIT FILES
+    MAX_FILES = 60
+    raw_files = raw_files[:MAX_FILES]
     files = []
     file_contents_override = {}
 
     for f in raw_files:
+        # 🚨 SKIP HEAVY / USELESS FILES
+        if any(skip in f for skip in [
+            "node_modules", ".git", "dist", "build", "__pycache__", ".next"
+        ]):
+            continue
+
+        if os.path.getsize(f) > 200_000:  # 200KB limit
+            continue
+
         if f.endswith(".ipynb"):
             content = parse_ipynb(f)
             if content.strip():
@@ -121,10 +141,10 @@ def load_repository(repo_path):
                 file_contents_override[f] = content
         elif os.path.isfile(f):
             files.append(f)
-
     # Deduplicate
     files = list(dict.fromkeys(files))
     print("Loaded files count:", len(files))
+    print("Step 3: Files loaded")
 
     FILES_CACHE = "repo_files.json"
     with open(FILES_CACHE, "w") as f:
@@ -151,6 +171,9 @@ def load_repository(repo_path):
     }
 
     print("Repo stored in memory:", len(current_repo["files"]))
+    print("Step 4: Graph built")
+    import gc
+    gc.collect()
 
 # -------------------------------
 # LLM ABSTRACTION — Gemini → Groq fallback
@@ -611,8 +634,10 @@ def get_file_content(path: str = Query(...)):
 # -------------------------------
 # UPLOAD ZIP
 # -------------------------------
+from fastapi import BackgroundTasks
+
 @router.post("/upload-zip")
-async def upload_zip(file: UploadFile = File(...)):
+async def upload_zip(file: UploadFile = File(...), bg: BackgroundTasks = None):
     repo_name = file.filename.replace(".zip", "")
     path = os.path.join(UPLOAD_DIR, repo_name)
 
@@ -638,14 +663,15 @@ async def upload_zip(file: UploadFile = File(...)):
                 shutil.move(os.path.join(inner_path, item), path)
             shutil.rmtree(inner_path)
 
-    load_repository(path)
-    return {"status": f"{repo_name} loaded"}
+    # 🚀 BACKGROUND PROCESSING
+    bg.add_task(load_repository, path)
 
+    return {"status": "processing started"}
 # -------------------------------
 # UPLOAD GITHUB
 # -------------------------------
 @router.post("/upload-github")
-async def upload_github(data: dict):
+async def upload_github(data: dict, bg: BackgroundTasks = None):
     url  = data.get("repo_url")
     name = url.split("/")[-1].replace(".git", "")
     path = os.path.join(UPLOAD_DIR, name)
@@ -655,8 +681,10 @@ async def upload_github(data: dict):
     else:
         subprocess.run(["git", "clone", url, path], check=True)
 
-    load_repository(path)
-    return {"status": f"{name} loaded"}
+    # 🚀 BACKGROUND PROCESSING
+    bg.add_task(load_repository, path)
+
+    return {"status": "processing started"}
 
 # -------------------------------
 # REPO STATUS
