@@ -79,6 +79,7 @@ current_repo = {
     "graph":        None,
     "symbol_table": None,
     "call_graph":   None,
+    "status":       "idle"   # 🔥 ADD THIS
 }
 
 # -------------------------------
@@ -103,6 +104,8 @@ def parse_ipynb(file_path):
 # -------------------------------
 def load_repository(repo_path):
     global current_repo
+    current_repo["status"] = "loading"
+    print("🚀 Repo loading started...")
 
     print(f"Loading repo: {repo_path}")
 
@@ -171,6 +174,8 @@ def load_repository(repo_path):
     }
 
     print("Repo stored in memory:", len(current_repo["files"]))
+    current_repo["status"] = "ready"
+    print("✅ Repo loading finished!")
     print("Step 4: Graph built")
     import gc
     gc.collect()
@@ -399,6 +404,9 @@ def stream_answer(query):
     global chat_history, last_user_query
 
     repo = current_repo
+    if repo.get("status") == "loading":
+        yield "data:Repository is still processing. Please wait...\n\n"
+        return
 
     if repo["index"] is None:
         yield "data:No repository loaded.\n\n"
@@ -694,6 +702,7 @@ def repo_status():
     return {
         "loaded": current_repo["path"] is not None,
         "path":   current_repo["path"],
+        "status": current_repo.get("status", "idle"),  # 🔥 ADD THIS
     }
 
 # -------------------------------
@@ -715,7 +724,14 @@ async def summarize_stream():
     files = repo["files"]
     graph = repo["graph"]
 
-    if not files:
+    
+    if repo.get("status") == "loading":
+        return StreamingResponse(
+            iter(["data:Repository is still processing. Please wait...\n\n"]),
+            media_type="text/event-stream",
+        )
+
+    if repo.get("status") != "ready" or not files:
         return StreamingResponse(
             iter(["data:Please upload a repository first.\n\n"]),
             media_type="text/event-stream",
