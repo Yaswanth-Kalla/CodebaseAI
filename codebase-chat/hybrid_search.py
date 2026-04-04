@@ -7,13 +7,13 @@ from model_loader import get_model
 model = get_model()  # Ensure model is loaded before hybrid search runs
 
 
-def build_bm25(chunks):
-    tokenized_chunks = [chunk.lower().split() for chunk in chunks]
+def build_bm25(texts):
+    tokenized_chunks = [text.lower().split() for text in texts]
     return BM25Okapi(tokenized_chunks)
 
 
-def hybrid_search(query, index, chunks, metadata, bm25, top_k=5):
-    n = len(chunks)
+def hybrid_search(query, index, metadata, bm25, top_k=5):
+    n = len(metadata)
     if n == 0:
         return []
 
@@ -21,7 +21,10 @@ def hybrid_search(query, index, chunks, metadata, bm25, top_k=5):
     k = min(top_k, n)
 
     # ---------- Semantic Search ----------
-    query_embedding = model.encode([query])
+    query_embedding = np.array(
+        model.encode([query]),
+        dtype="float32"
+    )
     distances, indices = index.search(np.array(query_embedding), k)
 
     # Convert L2 distance → similarity score in [0, 1]
@@ -34,6 +37,8 @@ def hybrid_search(query, index, chunks, metadata, bm25, top_k=5):
     # ---------- Keyword Search ----------
     tokenized_query = query.lower().split()
     bm25_raw        = bm25.get_scores(tokenized_query)
+    if len(bm25_raw) != n:
+        bm25_raw = bm25_raw[:n]
 
     # Normalise BM25 into [0, 1] so it's on the same scale as semantic scores
     bm25_max = bm25_raw.max()
@@ -44,19 +49,29 @@ def hybrid_search(query, index, chunks, metadata, bm25, top_k=5):
 
     # ---------- Combine ----------
     combined_scores = {}
-    for i in range(n):
-        sem  = semantic_scores.get(i, 0)
-        key  = float(bm25_norm[i])
+
+    # Only evaluate top candidates (faster)
+    candidate_indices = set(indices[0]) | set(np.argsort(bm25_norm)[-top_k*2:])
+
+    for i in candidate_indices:
+        if i == -1 or i >= n:
+            continue
+        sem = semantic_scores.get(i, 0)
+        key = float(bm25_norm[i])
         combined_scores[i] = 0.7 * sem + 0.3 * key
 
-    sorted_indices = sorted(combined_scores, key=combined_scores.get, reverse=True)
+    sorted_indices = sorted(
+        combined_scores.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
 
     results = []
-    for idx in sorted_indices[:top_k]:
+    for idx,score in sorted_indices[:top_k]:
         results.append({
-            "chunk": chunks[idx],
+            "meta": metadata[idx],
             "file":  metadata[idx]["file"],
-            "score": combined_scores[idx],
+            "score": score,
         })
 
     return results
