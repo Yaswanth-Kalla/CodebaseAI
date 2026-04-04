@@ -65,7 +65,8 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_M
 GROQ_URL   = "https://api.groq.com/openai/v1/chat/completions"
 
 router = APIRouter()
-UPLOAD_DIR = "uploaded_repos"
+UPLOAD_DIR = "data/uploaded_repos"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # -------------------------------
 # GLOBAL STATE
