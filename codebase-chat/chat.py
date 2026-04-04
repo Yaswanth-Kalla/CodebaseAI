@@ -9,6 +9,7 @@ import zipfile
 import shutil
 import subprocess
 import nbformat
+from hybrid_search import build_bm25
 
 print("🔥 CHAT FILE LOADED (SAFE)")
 
@@ -109,14 +110,29 @@ def load_repository(repo_path):
 
     print(f"Loading repo: {repo_path}")
 
-    index, chunks, metadata = run_vector_store(repo_path)
-    print("Step 1: Vector store built")
+    index_path = run_vector_store(repo_path)
 
-# 🚨 LIMIT CHUNKS (prevents memory crash)
-    MAX_CHUNKS = 800
-    chunks = chunks[:MAX_CHUNKS]
-    metadata = metadata[:MAX_CHUNKS]
-    bm25 = build_bm25(chunks)
+    import faiss
+    import json
+
+    index = faiss.read_index(os.path.join(index_path, "index.faiss"))
+
+    with open(os.path.join(index_path, "metadata.json")) as f:
+        metadata = json.load(f)
+
+    print("Step 1: Vector store loaded")
+
+    # 🔥 LIMIT METADATA
+    metadata = metadata[:800]
+
+    # 🔥 BUILD BM25 FROM METADATA TEXT
+    texts = [
+        f"{m.get('name','')} {m.get('type','')} {m.get('file','')}"
+        for m in metadata
+    ]
+
+    bm25 = build_bm25(texts)
+
     print("Step 2: BM25 built")
 
     raw_files = load_files(repo_path)
@@ -164,13 +180,13 @@ def load_repository(repo_path):
     current_repo = {
         "path":         repo_path,
         "index":        index,
-        "chunks":       chunks,
         "metadata":     metadata,
         "bm25":         bm25,
         "files":        files,
         "graph":        graph,
         "symbol_table": symbol_table,
         "call_graph":   call_graph,
+        "status": "ready",   # 🔥 ADD THIS HERE
     }
 
     print("Repo stored in memory:", len(current_repo["files"]))
@@ -413,7 +429,6 @@ def stream_answer(query):
         return
 
     index        = repo["index"]
-    chunks       = repo["chunks"]
     metadata     = repo["metadata"]
     bm25         = repo["bm25"]
     files        = repo["files"]
@@ -456,7 +471,7 @@ def stream_answer(query):
         return
 
     # -------- RAG SEARCH --------
-    results = run_hybrid_search(query, index, chunks, metadata, bm25)
+    results = run_hybrid_search(query, index, metadata, bm25)
 
     if not results or results[0]["score"] < 0.25:
         yield "data:Not enough relevant information.\n\n"
@@ -486,7 +501,7 @@ def stream_answer(query):
 
     ranked_chunks = rank_chunks(query, formatted_chunks)
 
-    def limit_context(chunks, max_chars=3500):
+    def limit_context(chunks, max_chars=2500):
         result = []
         total  = 0
         for chunk in chunks:
