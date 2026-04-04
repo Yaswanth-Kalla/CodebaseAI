@@ -246,7 +246,7 @@ export default function Chat({ setHistory, chatStore, setChatStore, selectedQuer
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const fetchFiles = async () => {
-    try { await fetch("https://codebaseai-orv6.onrender.com/files"); }
+    try { await fetch("https://codebaseai-1.onrender.com/files"); }
     catch (e) { console.error("fetchFiles error", e); }
   };
 
@@ -276,7 +276,7 @@ export default function Chat({ setHistory, chatStore, setChatStore, selectedQuer
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await fetch("https://codebaseai-orv6.onrender.com/upload-zip", { method: "POST", body: fd });
+      const res = await fetch("https://codebaseai-1.onrender.com/upload-zip", { method: "POST", body: fd });
       const data = await res.json();
       setUploadStatus(data.status || "Upload complete");
       setUploadSuccess(true); onUploadSuccess();
@@ -288,7 +288,7 @@ export default function Chat({ setHistory, chatStore, setChatStore, selectedQuer
     if (!repoUrl.trim()) return;
     setUploading(true); setUploadSuccess(false); setUploadStatus("Cloning repository...");
     try {
-      const res = await fetch("https://codebaseai-orv6.onrender.com/upload-github", {
+      const res = await fetch("https://codebaseai-1.onrender.com/upload-github", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ repo_url: repoUrl }),
@@ -316,8 +316,8 @@ export default function Chat({ setHistory, chatStore, setChatStore, selectedQuer
     inputRef.current?.focus();
 
     const endpoint = customQuery === "Summarize Codebase"
-      ? "https://codebaseai-orv6.onrender.com/summarize-stream"
-      : "https://codebaseai-orv6.onrender.com/chat-stream";
+      ? "https://codebaseai-1.onrender.com/summarize-stream"
+      : "https://codebaseai-1.onrender.com/chat-stream";
 
     try {
       const response = await fetch(endpoint, {
