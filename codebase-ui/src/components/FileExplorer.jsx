@@ -28,7 +28,7 @@ export default function FileExplorer({ fileToOpen }) {
     fetch("https://codebaseai-1.onrender.com/files")
       .then(res => res.json())
       .then(data => {
-        const paths = [...new Set(data.map(f => f.file))];
+        const paths = [...new Set(data.files.map(f => f.path))];
         setFiles(paths);
       })
       .catch(err => console.error("File fetch error:", err))
