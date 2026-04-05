@@ -1,0 +1,15 @@
+﻿fastapi
+uvicorn
+faiss-cpu
+google-generativeai
+
+numpy
+python-dotenv
+requests
+pydantic
+rank-bm25
+
+nbformat
+python-multipart
+cohere
+tqdm
